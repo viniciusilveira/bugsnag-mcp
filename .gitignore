@@ -9,6 +9,9 @@ build/
 dist/
 *.tsbuildinfo
 
+# Test coverage reports
+coverage/
+
 # Environment variables
 .env
 .env.local
