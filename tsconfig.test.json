@@ -3,13 +3,7 @@
   "compilerOptions": {
     "rootDir": ".",
     "types": ["jest", "node"],
-    "noImplicitAny": false,
-    "strictNullChecks": false,
-    "strictFunctionTypes": false,
-    "strictBindCallApply": false,
-    "strictPropertyInitialization": false,
-    "noImplicitThis": false,
-    "alwaysStrict": false
+    "strict": false
   },
   "include": ["src/**/*", "tests/**/*"]
 }

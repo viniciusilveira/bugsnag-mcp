@@ -133,7 +133,8 @@ export const toolDefinitions = [
         },
         include_full_details: {
           type: 'boolean',
-          description: 'Include all event details (may exceed token limits). Default: false for efficiency.',
+          description:
+            'Include all event details (may exceed token limits). Default: false for efficiency.',
         },
       },
       required: ['error_id'],
@@ -177,7 +178,8 @@ export const toolDefinitions = [
         },
         max_frames: {
           type: 'number',
-          description: 'Maximum number of stacktrace frames to return (default: 20 for token efficiency)',
+          description:
+            'Maximum number of stacktrace frames to return (default: 20 for token efficiency)',
         },
       },
       required: ['project_id', 'event_id'],
@@ -248,7 +250,8 @@ export const toolDefinitions = [
         },
         max_frames: {
           type: 'number',
-          description: 'Maximum number of stacktrace frames to return (default: 20 for token efficiency)',
+          description:
+            'Maximum number of stacktrace frames to return (default: 20 for token efficiency)',
         },
         max_breadcrumbs: {
           type: 'number',

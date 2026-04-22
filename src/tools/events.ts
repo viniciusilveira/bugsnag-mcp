@@ -22,7 +22,7 @@ interface BugsnagException {
  */
 function limitFrames(
   stacktrace: Array<Record<string, unknown>>,
-  maxFrames: number,
+  maxFrames: number
 ): { limited: Array<Record<string, unknown>>; total: number; truncated: boolean } {
   const total = stacktrace.length;
   return {
@@ -88,32 +88,38 @@ export const handleViewLatestEvent: ToolHandler = async args => {
     context: event.context,
 
     // Basic info only
-    app: event.app ? {
-      id: event.app.id,
-      name: event.app.name,
-      version: event.app.version,
-      releaseStage: event.app.releaseStage,
-    } : null,
+    app: event.app
+      ? {
+          id: event.app.id,
+          name: event.app.name,
+          version: event.app.version,
+          releaseStage: event.app.releaseStage,
+        }
+      : null,
 
-    device: event.device ? {
-      osName: event.device.osName,
-      osVersion: event.device.osVersion,
-      browserName: event.device.browserName,
-      browserVersion: event.device.browserVersion,
-    } : null,
+    device: event.device
+      ? {
+          osName: event.device.osName,
+          osVersion: event.device.osVersion,
+          browserName: event.device.browserName,
+          browserVersion: event.device.browserVersion,
+        }
+      : null,
 
     user: event.user || null,
 
     // Exception summary (without full stacktraces)
-    exceptions: event.exceptions?.map((exc: BugsnagException) => ({
-      errorClass: exc.errorClass,
-      message: exc.message,
-      type: exc.type,
-      stacktraceFrameCount: exc.stacktrace?.length || 0,
-    })) || [],
+    exceptions:
+      event.exceptions?.map((exc: BugsnagException) => ({
+        errorClass: exc.errorClass,
+        message: exc.message,
+        type: exc.type,
+        stacktraceFrameCount: exc.stacktrace?.length || 0,
+      })) || [],
 
     // Note about full details
-    _note: 'This is a summarized version. Set include_full_details=true to get complete event data (may exceed token limits).',
+    _note:
+      'This is a summarized version. Set include_full_details=true to get complete event data (may exceed token limits).',
   };
 
   return {
