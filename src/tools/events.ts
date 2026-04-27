@@ -7,7 +7,7 @@ import { ToolHandler } from '../types/index.js';
 import { formatStacktrace } from '../utils/stacktrace.js';
 import { formatExceptionChain } from '../utils/exceptions.js';
 
-const BLOCKED_HEADERS = [
+const BLOCKED_HEADERS = new Set([
   'authorization',
   'cookie',
   'x-api-key',
@@ -16,7 +16,7 @@ const BLOCKED_HEADERS = [
   'x-csrf-token',
   'proxy-authorization',
   'x-forwarded-for',
-];
+]);
 
 function sanitizeRequest(
   req: Record<string, unknown> | null | undefined,
@@ -30,12 +30,11 @@ function sanitizeRequest(
     headers: rawHeaders
       ? Object.fromEntries(
           Object.entries(rawHeaders).filter(
-            ([k]) => !BLOCKED_HEADERS.includes(k.toLowerCase()),
+            ([k]) => !BLOCKED_HEADERS.has(k.toLowerCase()),
           ),
         )
       : undefined,
-    // body intentionally omitted — may contain passwords, form data, PII
-    // clientIp intentionally omitted — is PII
+    // body and clientIp omitted — may contain passwords, PII
   };
 }
 
