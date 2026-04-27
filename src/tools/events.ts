@@ -6,6 +6,7 @@ import { initApiClient } from '../api/client.js';
 import { ToolHandler } from '../types/index.js';
 import { formatStacktrace } from '../utils/stacktrace.js';
 import { formatExceptionChain } from '../utils/exceptions.js';
+import { sanitizeRequest, sanitizeUser, sanitizeEvent } from '../utils/sanitize.js';
 
 /**
  * Lightweight interface for Bugsnag exception objects from the API
@@ -15,13 +16,6 @@ interface BugsnagException {
   message: string;
   type?: string;
   stacktrace?: Array<Record<string, unknown>>;
-}
-
-// Returns only the user's opaque ID — no PII fields (email, name, ip_address, etc.).
-// End-users of monitored applications never consented to share personal data with an LLM.
-function sanitizeUser(user: Record<string, unknown> | null | undefined): { id: unknown } | null {
-  if (!user) return null;
-  return { id: user.id };
 }
 
 /**
@@ -56,7 +50,7 @@ export const handleListErrorEvents: ToolHandler = async args => {
     content: [
       {
         type: 'text',
-        text: JSON.stringify(response.data, null, 2),
+        text: JSON.stringify(response.data.map(sanitizeEvent), null, 2),
       },
     ],
   };
@@ -73,13 +67,13 @@ export const handleViewLatestEvent: ToolHandler = async args => {
   const response = await client.get(`/errors/${errorId}/latest_event`);
   const event = response.data;
 
-  // If full details requested, return everything (may exceed token limits)
+  // If full details requested, return everything except PII (may exceed token limits)
   if (includeFullDetails) {
     return {
       content: [
         {
           type: 'text',
-          text: JSON.stringify(event, null, 2),
+          text: JSON.stringify(sanitizeEvent(event), null, 2),
         },
       ],
     };
@@ -153,7 +147,7 @@ export const handleViewEvent: ToolHandler = async args => {
     content: [
       {
         type: 'text',
-        text: JSON.stringify(response.data, null, 2),
+        text: JSON.stringify(sanitizeEvent(response.data), null, 2),
       },
     ],
   };
@@ -269,7 +263,7 @@ export const handleViewTabs: ToolHandler = async args => {
     app: event.app || null,
     device: event.device || null,
     user: sanitizeUser(event.user),
-    request: event.request || null,
+    request: sanitizeRequest(event.request),
 
     // Limit breadcrumbs for token efficiency
     breadcrumbs: (event.breadcrumbs || []).slice(-maxBreadcrumbs),
