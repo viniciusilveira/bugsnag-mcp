@@ -6,37 +6,7 @@ import { initApiClient } from '../api/client.js';
 import { ToolHandler } from '../types/index.js';
 import { formatStacktrace } from '../utils/stacktrace.js';
 import { formatExceptionChain } from '../utils/exceptions.js';
-
-const BLOCKED_HEADERS = new Set([
-  'authorization',
-  'cookie',
-  'x-api-key',
-  'x-auth-token',
-  'x-session-token',
-  'x-csrf-token',
-  'proxy-authorization',
-  'x-forwarded-for',
-]);
-
-function sanitizeRequest(
-  req: Record<string, unknown> | null | undefined,
-): Record<string, unknown> | null {
-  if (!req) return null;
-  const rawHeaders = req.headers as Record<string, string> | undefined;
-  return {
-    url: req.url,
-    method: req.method,
-    referer: req.referer,
-    headers: rawHeaders
-      ? Object.fromEntries(
-          Object.entries(rawHeaders).filter(
-            ([k]) => !BLOCKED_HEADERS.has(k.toLowerCase()),
-          ),
-        )
-      : undefined,
-    // body and clientIp omitted — may contain passwords, PII
-  };
-}
+import { sanitizeRequest, sanitizeUser, sanitizeEvent } from '../utils/sanitize.js';
 
 /**
  * Lightweight interface for Bugsnag exception objects from the API
@@ -46,13 +16,6 @@ interface BugsnagException {
   message: string;
   type?: string;
   stacktrace?: Array<Record<string, unknown>>;
-}
-
-// Returns only the user's opaque ID — no PII fields (email, name, ip_address, etc.).
-// End-users of monitored applications never consented to share personal data with an LLM.
-function sanitizeUser(user: Record<string, unknown> | null | undefined): { id: unknown } | null {
-  if (!user) return null;
-  return { id: user.id };
 }
 
 /**
@@ -87,7 +50,7 @@ export const handleListErrorEvents: ToolHandler = async args => {
     content: [
       {
         type: 'text',
-        text: JSON.stringify(response.data, null, 2),
+        text: JSON.stringify(response.data.map(sanitizeEvent), null, 2),
       },
     ],
   };
@@ -104,13 +67,13 @@ export const handleViewLatestEvent: ToolHandler = async args => {
   const response = await client.get(`/errors/${errorId}/latest_event`);
   const event = response.data;
 
-  // If full details requested, return everything (may exceed token limits)
+  // If full details requested, return everything except PII (may exceed token limits)
   if (includeFullDetails) {
     return {
       content: [
         {
           type: 'text',
-          text: JSON.stringify(event, null, 2),
+          text: JSON.stringify(sanitizeEvent(event), null, 2),
         },
       ],
     };
@@ -184,7 +147,7 @@ export const handleViewEvent: ToolHandler = async args => {
     content: [
       {
         type: 'text',
-        text: JSON.stringify(response.data, null, 2),
+        text: JSON.stringify(sanitizeEvent(response.data), null, 2),
       },
     ],
   };
