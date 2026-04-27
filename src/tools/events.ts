@@ -48,6 +48,13 @@ interface BugsnagException {
   stacktrace?: Array<Record<string, unknown>>;
 }
 
+// Returns only the user's opaque ID — no PII fields (email, name, ip_address, etc.).
+// End-users of monitored applications never consented to share personal data with an LLM.
+function sanitizeUser(user: Record<string, unknown> | null | undefined): { id: unknown } | null {
+  if (!user) return null;
+  return { id: user.id };
+}
+
 /**
  * Limit stacktrace frames and return metadata about truncation.
  */
@@ -137,7 +144,7 @@ export const handleViewLatestEvent: ToolHandler = async args => {
         }
       : null,
 
-    user: event.user || null,
+    user: sanitizeUser(event.user),
 
     // Exception summary (without full stacktraces)
     exceptions:
@@ -292,7 +299,7 @@ export const handleViewTabs: ToolHandler = async args => {
     // Tab data
     app: event.app || null,
     device: event.device || null,
-    user: event.user || null,
+    user: sanitizeUser(event.user),
     request: sanitizeRequest(event.request),
 
     // Limit breadcrumbs for token efficiency
