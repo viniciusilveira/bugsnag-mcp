@@ -7,6 +7,38 @@ import { ToolHandler } from '../types/index.js';
 import { formatStacktrace } from '../utils/stacktrace.js';
 import { formatExceptionChain } from '../utils/exceptions.js';
 
+const BLOCKED_HEADERS = [
+  'authorization',
+  'cookie',
+  'x-api-key',
+  'x-auth-token',
+  'x-session-token',
+  'x-csrf-token',
+  'proxy-authorization',
+  'x-forwarded-for',
+];
+
+function sanitizeRequest(
+  req: Record<string, unknown> | null | undefined,
+): Record<string, unknown> | null {
+  if (!req) return null;
+  const rawHeaders = req.headers as Record<string, string> | undefined;
+  return {
+    url: req.url,
+    method: req.method,
+    referer: req.referer,
+    headers: rawHeaders
+      ? Object.fromEntries(
+          Object.entries(rawHeaders).filter(
+            ([k]) => !BLOCKED_HEADERS.includes(k.toLowerCase()),
+          ),
+        )
+      : undefined,
+    // body intentionally omitted — may contain passwords, form data, PII
+    // clientIp intentionally omitted — is PII
+  };
+}
+
 /**
  * Lightweight interface for Bugsnag exception objects from the API
  */
@@ -262,7 +294,7 @@ export const handleViewTabs: ToolHandler = async args => {
     app: event.app || null,
     device: event.device || null,
     user: event.user || null,
-    request: event.request || null,
+    request: sanitizeRequest(event.request),
 
     // Limit breadcrumbs for token efficiency
     breadcrumbs: (event.breadcrumbs || []).slice(-maxBreadcrumbs),

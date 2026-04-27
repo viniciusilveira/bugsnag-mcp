@@ -154,10 +154,18 @@ export const eventDetailFixture = {
   ],
   request: {
     url: 'https://api.example.com/users/123/profile',
-    method: 'GET',
+    method: 'POST',
+    clientIp: '203.0.113.42',
     headers: {
       'user-agent': 'Mozilla/5.0',
       'content-type': 'application/json',
+      'authorization': 'Bearer eyJhbGciOiJSUzI1NiJ9.sensitive_token',
+      'cookie': 'session=abc123; csrf=xyz789',
+      'x-api-key': 'internal-service-key-123',
+    },
+    body: {
+      username: 'testuser',
+      password: 'hunter2',
     },
   },
   metaData: {
