@@ -4,6 +4,7 @@
 
 import { initApiClient } from '../api/client.js';
 import { ToolHandler } from '../types/index.js';
+import { sanitizeEvent } from '../utils/sanitize.js';
 
 /**
  * Handle the list_issues tool
@@ -19,11 +20,13 @@ export const handleListIssues: ToolHandler = async args => {
     params: { status, sort, per_page: limit },
   });
 
+  const sanitized = (response.data as Record<string, unknown>[]).map(item => sanitizeEvent(item));
+
   return {
     content: [
       {
         type: 'text',
-        text: JSON.stringify(response.data, null, 2),
+        text: JSON.stringify(sanitized, null, 2),
       },
     ],
   };
@@ -42,7 +45,7 @@ export const handleViewIssue: ToolHandler = async args => {
     content: [
       {
         type: 'text',
-        text: JSON.stringify(response.data, null, 2),
+        text: JSON.stringify(sanitizeEvent(response.data as Record<string, unknown>), null, 2),
       },
     ],
   };

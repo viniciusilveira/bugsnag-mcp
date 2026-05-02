@@ -4,6 +4,7 @@
 
 import { initApiClient } from '../api/client.js';
 import { ToolHandler } from '../types/index.js';
+import { sanitizeApiResponse } from '../utils/sanitize.js';
 
 /**
  * Handle the list_projects tool
@@ -18,7 +19,7 @@ export const handleListProjects: ToolHandler = async args => {
     content: [
       {
         type: 'text',
-        text: JSON.stringify(response.data, null, 2),
+        text: JSON.stringify(sanitizeApiResponse(response.data), null, 2),
       },
     ],
   };

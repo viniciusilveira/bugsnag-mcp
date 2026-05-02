@@ -1,4 +1,4 @@
-import { sanitizeRequest, sanitizeUser, sanitizeEvent } from '../../../src/utils/sanitize';
+import { sanitizeRequest, sanitizeUser, sanitizeEvent, sanitizeApiResponse } from '../../../src/utils/sanitize';
 import { describe, it, expect } from '@jest/globals';
 
 describe('sanitizeUser', () => {
@@ -198,5 +198,193 @@ describe('sanitizeEvent', () => {
   it('handles absent request gracefully', () => {
     const result = sanitizeEvent({ ...event, request: undefined });
     expect(result.request).toBeNull();
+  });
+});
+
+describe('sanitizeApiResponse', () => {
+  it('passes null through unchanged', () => {
+    expect(sanitizeApiResponse(null)).toBeNull();
+  });
+
+  it('passes undefined through unchanged', () => {
+    expect(sanitizeApiResponse(undefined)).toBeUndefined();
+  });
+
+  it('passes strings through unchanged', () => {
+    expect(sanitizeApiResponse('hello')).toBe('hello');
+  });
+
+  it('passes numbers through unchanged', () => {
+    expect(sanitizeApiResponse(42)).toBe(42);
+  });
+
+  it('passes booleans through unchanged', () => {
+    expect(sanitizeApiResponse(true)).toBe(true);
+  });
+
+  it('removes email at top level', () => {
+    const result = sanitizeApiResponse({ id: '1', email: 'user@example.com' }) as any;
+    expect(result).not.toHaveProperty('email');
+    expect(result).toHaveProperty('id', '1');
+  });
+
+  it('removes password at top level', () => {
+    const result = sanitizeApiResponse({ id: '1', password: 'secret' }) as any;
+    expect(result).not.toHaveProperty('password');
+  });
+
+  it('removes token at top level', () => {
+    const result = sanitizeApiResponse({ id: '1', token: 'abc123' }) as any;
+    expect(result).not.toHaveProperty('token');
+  });
+
+  it('removes ip_address at top level', () => {
+    const result = sanitizeApiResponse({ id: '1', ip_address: '1.2.3.4' }) as any;
+    expect(result).not.toHaveProperty('ip_address');
+  });
+
+  it('removes clientIp at any level', () => {
+    const result = sanitizeApiResponse({ request: { url: '/api', clientIp: '1.2.3.4' } }) as any;
+    expect(result.request).not.toHaveProperty('clientIp');
+  });
+
+  it('removes cpf at top level', () => {
+    const result = sanitizeApiResponse({ id: '1', cpf: '123.456.789-00' }) as any;
+    expect(result).not.toHaveProperty('cpf');
+  });
+
+  it('removes credit_card at top level', () => {
+    const result = sanitizeApiResponse({ id: '1', credit_card: '4111111111111111' }) as any;
+    expect(result).not.toHaveProperty('credit_card');
+  });
+
+  it('removes api_key (snake_case) at top level', () => {
+    const result = sanitizeApiResponse({ id: '1', api_key: 'test-api-key' }) as any;
+    expect(result).not.toHaveProperty('api_key');
+    expect(result).toHaveProperty('id', '1');
+  });
+
+  it('removes apiKey (camelCase) at top level', () => {
+    const result = sanitizeApiResponse({ id: '1', apiKey: 'test-api-key' }) as any;
+    expect(result).not.toHaveProperty('apiKey');
+  });
+
+  it('retains name at top level (not PII in org/project context)', () => {
+    const result = sanitizeApiResponse({ id: '1', name: 'My Project' }) as any;
+    expect(result).toHaveProperty('name', 'My Project');
+  });
+
+  it('removes email nested inside user object', () => {
+    const result = sanitizeApiResponse({
+      user: { id: 'u1', email: 'user@example.com' },
+    }) as any;
+    expect(result.user).not.toHaveProperty('email');
+    expect(result.user).toHaveProperty('id', 'u1');
+  });
+
+  it('removes password nested inside metaData', () => {
+    const result = sanitizeApiResponse({
+      metaData: { auth: { password: 'secret', username: 'alice' } },
+    }) as any;
+    expect(result.metaData.auth).not.toHaveProperty('password');
+    expect(result.metaData.auth).toHaveProperty('username');
+  });
+
+  it('removes token deeply nested', () => {
+    const result = sanitizeApiResponse({
+      a: { b: { c: { token: 'deeply-nested-secret', safe: 'value' } } },
+    }) as any;
+    expect(result.a.b.c).not.toHaveProperty('token');
+    expect(result.a.b.c).toHaveProperty('safe');
+  });
+
+  it('removes api_key nested inside project object', () => {
+    const result = sanitizeApiResponse({
+      projects: [{ id: 'p1', api_key: 'secret', slug: 'my-project' }],
+    }) as any;
+    expect(result.projects[0]).not.toHaveProperty('api_key');
+    expect(result.projects[0]).toHaveProperty('slug');
+  });
+
+  it('strips Authorization header from request.headers', () => {
+    const result = sanitizeApiResponse({
+      request: {
+        url: '/api',
+        headers: {
+          authorization: 'Bearer token123',
+          'content-type': 'application/json',
+        },
+      },
+    }) as any;
+    expect(result.request.headers).not.toHaveProperty('authorization');
+    expect(result.request.headers).toHaveProperty('content-type');
+  });
+
+  it('strips Cookie header case-insensitively', () => {
+    const result = sanitizeApiResponse({
+      request: { headers: { cookie: 'session=abc', accept: 'application/json' } },
+    }) as any;
+    expect(result.request.headers).not.toHaveProperty('cookie');
+    expect(result.request.headers).toHaveProperty('accept');
+  });
+
+  it('strips x-api-key header from request.headers', () => {
+    const result = sanitizeApiResponse({
+      request: { headers: { 'x-api-key': 'my-key', 'user-agent': 'Mozilla' } },
+    }) as any;
+    expect(result.request.headers).not.toHaveProperty('x-api-key');
+    expect(result.request.headers).toHaveProperty('user-agent');
+  });
+
+  it('retains non-sensitive headers (content-type, user-agent)', () => {
+    const result = sanitizeApiResponse({
+      request: {
+        headers: {
+          'content-type': 'application/json',
+          'user-agent': 'Mozilla/5.0',
+          accept: 'application/json',
+        },
+      },
+    }) as any;
+    expect(result.request.headers).toHaveProperty('content-type');
+    expect(result.request.headers).toHaveProperty('user-agent');
+    expect(result.request.headers).toHaveProperty('accept');
+  });
+
+  it('strips body from request object', () => {
+    const result = sanitizeApiResponse({
+      request: { url: '/login', method: 'POST', body: { password: 'secret' } },
+    }) as any;
+    expect(result.request).not.toHaveProperty('body');
+    expect(result.request).toHaveProperty('url');
+    expect(result.request).toHaveProperty('method');
+  });
+
+  it('recursively sanitizes items in arrays', () => {
+    const result = sanitizeApiResponse([
+      { id: '1', email: 'a@b.com' },
+      { id: '2', email: 'c@d.com' },
+    ]) as any;
+    expect(result[0]).not.toHaveProperty('email');
+    expect(result[0]).toHaveProperty('id');
+    expect(result[1]).not.toHaveProperty('email');
+  });
+
+  it('handles arrays of primitives without modification', () => {
+    const result = sanitizeApiResponse([1, 2, 3]);
+    expect(result).toEqual([1, 2, 3]);
+  });
+
+  it('handles empty object', () => {
+    expect(sanitizeApiResponse({})).toEqual({});
+  });
+
+  it('handles empty array', () => {
+    expect(sanitizeApiResponse([])).toEqual([]);
+  });
+
+  it('handles object with only sensitive keys', () => {
+    const result = sanitizeApiResponse({ email: 'x@y.com', password: 'abc' }) as any;
+    expect(result).toEqual({});
   });
 });

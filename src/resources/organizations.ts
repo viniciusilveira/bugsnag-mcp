@@ -4,6 +4,7 @@
 
 import { AxiosInstance } from 'axios';
 import { ResourceHandler } from '../types/index.js';
+import { sanitizeApiResponse } from '../utils/sanitize.js';
 
 /**
  * Handle organization resources
@@ -31,6 +32,6 @@ export const handleOrganizationResource: ResourceHandler = async (uri, client) =
   return {
     uri,
     mimeType: 'application/json',
-    text: JSON.stringify(data, null, 2),
+    text: JSON.stringify(sanitizeApiResponse(data), null, 2),
   };
 };

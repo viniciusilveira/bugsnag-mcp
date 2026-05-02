@@ -4,6 +4,7 @@
 
 import { initApiClient } from '../api/client.js';
 import { ToolHandler } from '../types/index.js';
+import { sanitizeApiResponse, sanitizeUser } from '../utils/sanitize.js';
 
 /**
  * Handle the list_errors tool
@@ -19,11 +20,16 @@ export const handleListErrors: ToolHandler = async args => {
     params: { status, sort, per_page: limit },
   });
 
+  const sanitized = (sanitizeApiResponse(response.data) as Record<string, unknown>[]).map(item => {
+    if (item.assignee) item.assignee = sanitizeUser(item.assignee as Record<string, unknown>);
+    return item;
+  });
+
   return {
     content: [
       {
         type: 'text',
-        text: JSON.stringify(response.data, null, 2),
+        text: JSON.stringify(sanitized, null, 2),
       },
     ],
   };
@@ -38,11 +44,16 @@ export const handleViewError: ToolHandler = async args => {
   const client = initApiClient();
   const response = await client.get(`/errors/${errorId}`);
 
+  const sanitized = sanitizeApiResponse(response.data) as Record<string, unknown>;
+  if (sanitized.assignee) {
+    sanitized.assignee = sanitizeUser(sanitized.assignee as Record<string, unknown>);
+  }
+
   return {
     content: [
       {
         type: 'text',
-        text: JSON.stringify(response.data, null, 2),
+        text: JSON.stringify(sanitized, null, 2),
       },
     ],
   };
@@ -68,7 +79,7 @@ export const handleSearchIssues: ToolHandler = async args => {
     content: [
       {
         type: 'text',
-        text: JSON.stringify(response.data, null, 2),
+        text: JSON.stringify(sanitizeApiResponse(response.data), null, 2),
       },
     ],
   };

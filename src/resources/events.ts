@@ -4,6 +4,7 @@
 
 import { AxiosInstance } from 'axios';
 import { ResourceHandler } from '../types/index.js';
+import { sanitizeApiResponse } from '../utils/sanitize.js';
 
 /**
  * Handle event resources
@@ -21,6 +22,6 @@ export const handleEventResource: ResourceHandler = async (uri, client) => {
   return {
     uri,
     mimeType: 'application/json',
-    text: JSON.stringify(response.data, null, 2),
+    text: JSON.stringify(sanitizeApiResponse(response.data), null, 2),
   };
 };

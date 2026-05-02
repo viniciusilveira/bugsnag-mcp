@@ -1,14 +1,35 @@
-/**
- * Integration tests for organization tools
- */
-
-import { handleListOrganizations } from '../../../src/tools/organizations';
+import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 import { organizationsFixture } from '../../fixtures/organizations';
-import { jest, describe, it, expect } from '@jest/globals';
-import { initApiClient } from '../../../src/api/client';
 
-describe('Organization Tools', () => {
-  it('should have a handleListOrganizations function', () => {
-    expect(typeof handleListOrganizations).toBe('function');
+const mockGet = jest.fn();
+jest.unstable_mockModule('../../../src/api/client', () => ({
+  initApiClient: jest.fn(() => ({ get: mockGet })),
+}));
+
+const { handleListOrganizations } = await import('../../../src/tools/organizations');
+
+describe('handleListOrganizations', () => {
+  beforeEach(() => {
+    mockGet.mockReset();
+    mockGet.mockResolvedValue({ data: organizationsFixture });
+  });
+
+  it('retains name (org name is not PII)', async () => {
+    const result = await handleListOrganizations({});
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed[0]).toHaveProperty('name', 'Test Organization');
+  });
+
+  it('retains id and slug', async () => {
+    const result = await handleListOrganizations({});
+    const parsed = JSON.parse(result.content[0].text);
+    expect(parsed[0]).toHaveProperty('id', 'org_12345');
+    expect(parsed[0]).toHaveProperty('slug', 'test-org');
+  });
+
+  it('passes through empty array', async () => {
+    mockGet.mockResolvedValue({ data: [] });
+    const result = await handleListOrganizations({});
+    expect(result.content[0].text).toBe('[]');
   });
 });
